@@ -1,1 +1,0 @@
-VFV---Vision-for-Visionaries

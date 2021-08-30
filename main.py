@@ -10,13 +10,17 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from PIL import Image, ImageTk
 import numpy as np
-from settings import BG_SIZE, X_size, Y_size, AppX_size, AppY_size, AppBG_SIZE
+from settings import BG_SIZE, X_size, Y_size, AppX_size, AppY_size, AppBG_SIZE, monitor_height, monitor_width
 # from func_app import App
 import cv2
 import CreateToolTip
+from color_hist import color_histogram_equalization
+
 
 PATH_C = "C:/Users/gacek/Desktop/Projekty IT/Python/VFV---Vision-for-Visionaries/"
 Origin_image = r"images/No_img.png"
+
+
 
 Img_CV = None
 Img_name = None
@@ -53,6 +57,88 @@ def save_file(root):
 
     root.destroy()
     App_func()
+
+
+def SpaceColor():
+    root_space = Toplevel()
+    root_space.geometry("{}x{}".format(int(X_size/3), int(Y_size/3)))
+    root_space.title("Conversion")
+
+    clicked1 = StringVar()
+    clicked1.set("BGR")
+
+    clicked2 = StringVar()
+    clicked2.set("RGB")
+
+    dropdown1 = ["BGR", "RGB", "HSV", "LAB", "YCbCr"]
+    dropdown2 = ["RGB", "BGR", "HSV", "LAB", "YCbCr"]
+
+    dropmenu = OptionMenu(root_space, clicked1, *dropdown1)
+    dropmenu.place(x=int(X_size/30), y=int(Y_size/30))
+
+    ToLabel = Label(root_space, text=" TO ")
+    ToLabel.place(x=int(X_size/8.1), y=int(Y_size/24))
+
+    dropmenu2 = OptionMenu(root_space, clicked2, *dropdown2)
+    dropmenu2.place(x=int(X_size/6), y=int(Y_size/30))
+
+    ConvertSpaceButton = Button(root_space, text="Convert", pady=5, padx=10, command=lambda: Convert(root_space, str(clicked1.get()), str(clicked2.get())))
+    ConvertSpaceButton.place(x=int(X_size/8.1), y=int(Y_size/3.65))
+
+    root_space.mainloop()
+
+
+def Convert(root, fmt1: str, fmt2: str):
+    global Img_CV
+    mask = None
+
+    if fmt1 == "RGB" and fmt2 == "BGR":
+        mask = cv2.COLOR_RGB2BGR
+    elif fmt1 == "RGB" and fmt2 == "HSV":
+        mask = cv2.COLOR_RGB2HSV
+    elif fmt1 == "RGB" and fmt2 == "LAB":
+        mask = cv2.COLOR_RGB2LAB
+    elif fmt1 == "RGB" and fmt2 == "YCrCb":
+        mask = cv2.COLOR_RGB2YCrCb
+
+    elif fmt1 == "BGR" and fmt2 == "RGB":
+        mask = cv2.COLOR_BGR2RGB
+    elif fmt1 == "BGR" and fmt2 == "HSV":
+        mask = cv2.COLOR_BGR2HSV
+    elif fmt1 == "BGR" and fmt2 == "LAB":
+        mask = cv2.COLOR_BGR2LAB
+    elif fmt1 == "BGR" and fmt2 == "YCrCb":
+        mask = cv2.COLOR_BGR2YCrCb
+
+    elif fmt1 == "HSV" and fmt2 == "RGB":
+        mask = cv2.COLOR_HSV2RGB
+    elif fmt1 == "HSV" and fmt2 == "BGR":
+        mask = cv2.COLOR_HSV2BGR
+    elif fmt1 == "HSV" and fmt2 == "LAB":
+        mask = None # Can't do this
+    elif fmt1 == "HSV" and fmt2 == "YCrCb":
+        mask = cv2.COLOR_HSV2RGB
+
+    elif fmt1 == "YCrCb" and fmt2 == "RGB":
+        mask = cv2.COLOR_YCrCb2RGB
+    elif fmt1 == "YCrCb" and fmt2 == "BGR":
+        mask = cv2.COLOR_YCrCb2BGR
+    # elif fmt1 == "YCrCb" and fmt2 == "HSV":
+    #     mask = None # Can't do this
+    # elif fmt1 == "YCrCb" and fmt2 == "LAB":
+    #     mask = None # Can't do this
+
+    elif fmt1 == "LAB" and fmt2 == "RGB":
+        mask = cv2.COLOR_LAB2RGB
+    elif fmt1 == "LAB" and fmt2 == "BGR":
+        mask = cv2.COLOR_LAB2BGR
+
+    if mask:
+        Img_CV = cv2.cvtColor(Img_CV, mask)
+    else:
+        messagebox.showerror("Error", "Wrong format - conversion impossible.")
+
+    root.destroy()
 
 
 def MakeGray():
@@ -156,13 +242,56 @@ def show_histogram():
     ax.plot(hist_img)
     ax.set_title("Histogram of " + str(Img_name))
     hist_root.title(Img_name + " Histogram")
-    hist_root.geometry()
     hist_root.geometry("{}x{}".format(int(X_size/1.1), int(Y_size/1.6)))
     hist_root.mainloop()
 
 
 def show_color_histogram():
-    pass
+    global Img_CV
+    img = deepcopy(Img_CV)
+    colors = ['r', 'g', 'b']
+
+
+    img_eq, hist_eq = color_histogram_equalization(img)
+
+    root_color_hist = Toplevel()
+    root_color_hist.geometry("{}x{}".format(int(X_size / 0.7), int(Y_size / 0.8)))
+    compare_figure, ((ax1IMG, ax1HIST), (ax2IMG, ax2HIST)) = plt.subplots(2, 2)
+    compare_figure.set_size_inches([12, 8])
+    compare_figure.suptitle("Comparison")
+
+    chart_type = FigureCanvasTkAgg(compare_figure, root_color_hist)
+    chart_type.get_tk_widget().place(x=0, y=0)
+
+    ax1IMG.imshow(img)
+    ax1IMG.set_title("Original Image")
+
+
+    for i in range(3):
+        img_h = cv2.calcHist([img], [i], None, [256], [0, 256])
+        plt.plot(img_h, colors[i], label=colors[i])
+        ax1HIST.plot(img_h, colors[i], label=colors[i].upper())
+    ax1HIST.set_title("Original Histogram")
+    ax1HIST.legend(colors)
+
+    ax2IMG.imshow(img_eq)
+    ax2IMG.set_title("Color image after equalizing")
+
+
+    for i in range(3):
+        img_he = cv2.calcHist([img_eq], [i], None, [256], [0, 256])
+        ax2HIST.plot(img_he, colors[i], label=colors[i].upper())
+    ax2HIST.set_title("Color histogram after equalizing")
+    ax2HIST.legend(colors)
+
+    SaveButton = Button(root_color_hist, text="Save", command=lambda: save_img(root_color_hist, img_eq, "ColorHistEq    "),
+                        padx=10, pady=5)
+    SaveButton.place(x=int(X_size / 0.78), y=int(Y_size / 60))
+
+    DontSaveButton = Button(root_color_hist, text="Don't save", command=root_color_hist.destroy, padx=10, pady=5)
+    DontSaveButton.place(x=int(X_size / 0.78), y=int(Y_size / 13))
+
+    root_color_hist.mainloop()
 
 
 def equal_histogram():
@@ -283,7 +412,6 @@ def CLAHE_get_data():
                          command=lambda: CLAHE(root_clahe, int(TileGridSizeEntry.get()), float(ClipLimitEntry.get())))
     EnterButton.place(x=int(X_size / 10), y=int(Y_size / 2 - Y_size / 11))
 
-
     root_clahe.mainloop()
 
 
@@ -329,6 +457,15 @@ def CLAHE(root, tilegridsize: int, cliplimit: float):
     root_clahe.mainloop()
 
 
+def Resolution():
+
+    root_res = Toplevel()
+    root_res.geometry("{}x{}".format(int(X_size/2 ), int(Y_size/2)))
+    root_res.title("Resolution")
+
+    root_res.mainloop()
+
+
 def show_image(root):
     root.destroy()
     App_func()
@@ -345,7 +482,10 @@ def show_image(root):
 def App_func():
     App = Toplevel()
     App.tk.call('wm', 'iconphoto', App._w, logo_img)
-    App.geometry(AppBG_SIZE)
+    screen_posx = (monitor_width) / 2 - AppX_size / 2
+    screen_posy = (monitor_height) / 2 - AppY_size / 2
+
+    App.geometry(f'{AppBG_SIZE}+{int(screen_posx)}+{int(screen_posy)}')
 
     app_background_img = ImageTk.PhotoImage(
         (Image.open("images/app_background.jpg")).resize((AppX_size, AppY_size), Image.ANTIALIAS))
@@ -378,67 +518,90 @@ def App_func():
         ShowImageButton.place(x=AppX_size - AppX_size / 9.7, y=AppY_size / 75 * 20)
 
     if Origin_image == r"images/No_img.png":
-        MakeGrayButton = Button(App, text="Make Gray", padx=AppX_size / 100, pady=AppY_size / 150,
+        MakeGrayButton = Button(App, text="Make Gray", padx=AppX_size / 25.6, pady=AppY_size / 150,
                                 state="disabled")
         MakeGrayButton.place(x=AppX_size / 8, y=AppY_size / 1.9)
     else:
-        MakeGrayButton = Button(App, text="Make Gray", padx=AppX_size / 100, pady=AppY_size / 150,
+        MakeGrayButton = Button(App, text="Make Gray", padx=AppX_size / 25.6, pady=AppY_size / 150,
                                 command=MakeGray)
         MakeGrayButton.place(x=AppX_size / 8, y=AppY_size / 1.9)
 
     if Origin_image == r"images/No_img.png":
-        BinarizationButton = Button(App, text="Binarization", padx=AppX_size / 100, pady=AppY_size / 150,
+        BinarizationButton = Button(App, text="Binarization", padx=AppX_size / 28, pady=AppY_size / 150,
                                     state="disabled")
         BinarizationButton.place(x=AppX_size / 8, y=AppY_size / 1.74)
     else:
-        BinarizationButton = Button(App, text="Binarization", padx=AppX_size / 100, pady=AppY_size / 150,
+        BinarizationButton = Button(App, text="Binarization", padx=AppX_size / 28, pady=AppY_size / 150,
                                     command=get_data_binarization)
         BinarizationButton.place(x=AppX_size / 8, y=AppY_size / 1.74)
 
     if Origin_image == r"images/No_img.png":
-        ShowHistogramButton = Button(App, text="Histogram", padx=AppX_size / 100, pady=AppY_size / 150,
+        ShowHistogramButton = Button(App, text="Histogram", padx=AppX_size / 25.5, pady=AppY_size / 150,
                                     state="disabled")
         ShowHistogramButton.place(x=AppX_size / 8, y=AppY_size / 1.6)
     else:
-        ShowHistogramButton = Button(App, text="Histogram", padx=AppX_size / 100, pady=AppY_size / 150,
+        ShowHistogramButton = Button(App, text="Histogram", padx=AppX_size / 25.5, pady=AppY_size / 150,
                                     command=show_histogram)
         ShowHistogramButton.place(x=AppX_size / 8, y=AppY_size / 1.6)
 
     if Origin_image == r"images/No_img.png":
-        ShowHistogramColorButton = Button(App, text="Color Histogram", padx=AppX_size / 100, pady=AppY_size / 150,
+        ShowHistogramColorButton = Button(App, text="Color Histogram", padx=AppX_size / 43.5, pady=AppY_size / 150,
                                      state="disabled")
         ShowHistogramColorButton.place(x=AppX_size / 8, y=AppY_size / 1.48)
     else:
-        ShowHistogramColorButton = Button(App, text="Color Histogram", padx=AppX_size / 100, pady=AppY_size / 150,
-                                     command=show_histogram)
+        ShowHistogramColorButton = Button(App, text="Color Histogram", padx=AppX_size / 43.5, pady=AppY_size / 150,
+                                     command=show_color_histogram)
         ShowHistogramColorButton.place(x=AppX_size / 8, y=AppY_size / 1.48)  #TODO check whether possible or not
 
     if Origin_image == r"images/No_img.png":
-        NormalizeHistogramButton = Button(App, text="Normalize Histogram", padx=AppX_size / 100, pady=AppY_size / 150,
+        NormalizeHistogramButton = Button(App, text="Normalize Histogram", padx=AppX_size / 95.5, pady=AppY_size / 150,
                                      state="disabled")
         NormalizeHistogramButton.place(x=AppX_size / 8, y=AppY_size / 1.38)
     else:
-        NormalizeHistogramButton = Button(App, text="Normalize Histogram", padx=AppX_size / 100, pady=AppY_size / 150,
+        NormalizeHistogramButton = Button(App, text="Normalize Histogram", padx=AppX_size / 95.5, pady=AppY_size / 150,
                                      command=normalize_histogram)
         NormalizeHistogramButton.place(x=AppX_size / 8, y=AppY_size / 1.38)
 
     if Origin_image == r"images/No_img.png":
-        EqualHistogramButton = Button(App, text="Equal Histogram", padx=AppX_size / 100, pady=AppY_size / 150,
+        EqualHistogramButton = Button(App, text="Equal Histogram", padx=AppX_size / 43, pady=AppY_size / 150,
                                           state="disabled")
         EqualHistogramButton.place(x=AppX_size / 8, y=AppY_size / 1.29)
     else:
-        EqualHistogramButton = Button(App, text="Equal Histogram", padx=AppX_size / 100, pady=AppY_size / 150,
+        EqualHistogramButton = Button(App, text="Equal Histogram", padx=AppX_size / 43, pady=AppY_size / 150,
                                           command=equal_histogram)
         EqualHistogramButton.place(x=AppX_size / 8, y=AppY_size / 1.29)
 
     if Origin_image == r"images/No_img.png":
-        CLAHEHistogramButton = Button(App, text="CLAHE", padx=AppX_size / 100, pady=AppY_size / 150,
+        CLAHEHistogramButton = Button(App, text="CLAHE", padx=AppX_size / 20.5, pady=AppY_size / 150,
                                       state="disabled")
         CLAHEHistogramButton.place(x=AppX_size / 8, y=AppY_size / 1.21)
     else:
-        CLAHEHistogramButton = Button(App, text="CLAHE", padx=AppX_size / 100, pady=AppY_size / 150,
+        CLAHEHistogramButton = Button(App, text="CLAHE", padx=AppX_size / 20.5, pady=AppY_size / 150,
                                       command=CLAHE_get_data)
         CLAHEHistogramButton.place(x=AppX_size / 8, y=AppY_size / 1.21)
+        CreateToolTip.CreateToolTip(CLAHEHistogramButton,
+                                    text="CLAHE - Contrast Limited Adaptive Histogram Equalization\n This is more effective way of equalizing histogram. It eliminate noises and do not enhance them. ")
+
+    if Origin_image == r"images/No_img.png":
+        ColorConversionButton = Button(App, text="Space Color", padx=AppX_size / 90, pady=AppY_size / 150,
+                                      state="disabled")
+        ColorConversionButton.place(x=AppX_size - AppX_size / 9.7, y=AppY_size / 75 * 28)
+    else:
+        ColorConversionButton = Button(App, text="Space Color", padx=AppX_size / 90, pady=AppY_size / 150,
+                                      command=SpaceColor)
+        ColorConversionButton.place(x=AppX_size - AppX_size / 9.7, y=AppY_size / 75 * 28)
+        CreateToolTip.CreateToolTip(ColorConversionButton,
+                                    text="This function shows color histogram of photo. It also equalize it. If you want save ")
+
+    if Origin_image == r"images/No_img.png":
+        ResolutionButton = Button(App, text="Resolution", padx=AppX_size / 68, pady=AppY_size / 150,
+                                      state="disabled")
+        ResolutionButton.place(x=AppX_size - AppX_size / 9.7, y=AppY_size / 75 * 35.5)
+    else:
+        ResolutionButton = Button(App, text="Resolution", padx=AppX_size / 68, pady=AppY_size / 150,
+                                      command=Resolution)
+        ResolutionButton.place(x=AppX_size - AppX_size / 9.7, y=AppY_size / 75 * 35.5)
+
 
     App.mainloop()
 
@@ -467,6 +630,7 @@ def open_file(App):
 
         img_act = cv2.imread(filename)
         Img_CV = np.array(img_act).astype(np.uint8)
+        # Img_CV = cv2.cvtColor(Img_CV, cv2.COLOR_BGR2RGB)
         cv2.imwrite(PATH_C + "workspace/ActualImg.png", Img_CV)
 
         Origin_image = "workspace/ActualImg.png"
@@ -477,10 +641,15 @@ def open_file(App):
 if __name__ == "__main__":
     Root = Tk()
     Root.title("Vision For Visionaries")
-    Root.geometry(BG_SIZE)  # 800x600
+
+    screen_posx = (monitor_width) / 2 - X_size / 2
+    screen_posy = (monitor_height) / 2 - Y_size / 2
+
+    Root.geometry(f'{BG_SIZE}+{int(screen_posx)}+{int(screen_posy)}')  # 800x600
     Root.wm_attributes('-transparentcolor', '#ab23ff')
     logo_img = PhotoImage(file='images/logo.png')
     Root.tk.call('wm', 'iconphoto', Root._w, logo_img)
+
 
     # main
 

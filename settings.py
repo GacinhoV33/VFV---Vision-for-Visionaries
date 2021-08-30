@@ -1,5 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+import screeninfo
+monitor_width = screeninfo.get_monitors()[0].width
+monitor_height = screeninfo.get_monitors()[0].height
 
 X_size = 800
 Y_size = 600

@@ -21,7 +21,6 @@ PATH_C = "C:/Users/gacek/Desktop/Projekty IT/Python/VFV---Vision-for-Visionaries
 Origin_image = r"images/No_img.png"
 
 
-
 Img_CV = None
 Img_name = None
 Current_Img = None
@@ -249,10 +248,12 @@ def show_histogram():
 def show_color_histogram():
     global Img_CV
     img = deepcopy(Img_CV)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     colors = ['r', 'g', 'b']
 
 
     img_eq, hist_eq = color_histogram_equalization(img)
+
 
     root_color_hist = Toplevel()
     root_color_hist.geometry("{}x{}".format(int(X_size / 0.7), int(Y_size / 0.8)))
